@@ -13,7 +13,7 @@ extern "C" {
  * Default values for #define'd symbols
  */
 #ifndef STANDALONE       /* If used as standalone interpreter */
-# define STANDALONE 1
+# define STANDALONE 0
 #endif
 
 #ifndef _MSC_VER

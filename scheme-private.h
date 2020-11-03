@@ -55,6 +55,11 @@ struct cell {
       struct cell *_car;
       struct cell *_cdr;
     } _cons;
+    
+    struct {
+      void *ptr;
+      int type;
+    } _userdata;
   } _object;
 };
 
@@ -206,6 +211,39 @@ int is_promise(pointer p);
 int is_environment(pointer p);
 int is_immutable(pointer p);
 void setimmutable(pointer p);
+
+pointer find_slot_in_env(scheme *sc, pointer env, pointer sym, int all);
+pointer slot_value_in_env(pointer slot);
+pointer _Error_1(scheme *sc, const char *s, pointer a);
+void Eval_Cycle(scheme *sc, enum scheme_opcodes op);
+pointer _s_return(scheme *sc, pointer a);
+pointer get_cell(scheme *sc, pointer a, pointer b);
+
+/* macros for cell operations */
+#define typeflag(p)      ((p)->_flag)
+#define type(p)          (typeflag(p)&T_MASKTYPE)
+
+enum scheme_types {
+  T_STRING=1,
+  T_NUMBER=2,
+  T_SYMBOL=3,
+  T_PROC=4,
+  T_PAIR=5,
+  T_CLOSURE=6,
+  T_CONTINUATION=7,
+  T_FOREIGN=8,
+  T_CHARACTER=9,
+  T_PORT=10,
+  T_VECTOR=11,
+  T_MACRO=12,
+  T_PROMISE=13,
+  T_ENVIRONMENT=14,
+  T_USERDATA=15,
+  T_LAST_SYSTEM_TYPE=15
+};
+
+#define T_MASKTYPE      31    /* 0000000000011111 */
+#define T_ATOM       16384    /* 0100000000000000 */   /* only for gc */
 
 #ifdef __cplusplus
 }

@@ -63,7 +63,7 @@ PLATFORM_FEATURES= -DSUN_DL=1
 
 FEATURES = $(PLATFORM_FEATURES) -DUSE_DL=1 -DUSE_MATH=1 -DUSE_ASCII_NAMES=0
 
-OBJS = scheme.$(Osuf) dynload.$(Osuf)
+OBJS = scheme.$(Osuf) dynload.$(Osuf) ts_iz_ext.$(Osuf)
 
 LIBTARGET = $(LIBPREFIX)tinyscheme.$(SOsuf)
 STATICLIBTARGET = $(LIBPREFIX)tinyscheme.$(LIBsuf)
@@ -84,6 +84,7 @@ $(STATICLIBTARGET): $(OBJS)
 
 $(OBJS): scheme.h scheme-private.h opdefines.h
 dynload.$(Osuf): dynload.h
+ts_iz_ext.$(Osuf): ts_iz_ext.h
 
 clean:
 	$(RM) $(OBJS) $(LIBTARGET) $(STATICLIBTARGET) scheme$(EXE_EXT)
@@ -91,7 +92,7 @@ clean:
 	$(RM) scheme.ilk scheme.map scheme.pdb scheme.lib scheme.exp
 	$(RM) *~
 
-TAGS_SRCS = scheme.h scheme.c dynload.h dynload.c
+TAGS_SRCS = scheme.h scheme.c dynload.h dynload.c ts_iz_ext.h ts_iz_ext.c
 
 tags: TAGS
 TAGS: $(TAGS_SRCS)

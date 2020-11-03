@@ -38,6 +38,8 @@
 # endif
 #endif
 
+#include "ts_iz_ext.h"
+
 /* Used for documentation purposes, to signal functions in 'interface' */
 #define INTERFACE
 
@@ -108,31 +110,11 @@ static const char *strlwr(char *s) {
 # define FIRST_CELLSEGS 3
 #endif
 
-enum scheme_types {
-  T_STRING=1,
-  T_NUMBER=2,
-  T_SYMBOL=3,
-  T_PROC=4,
-  T_PAIR=5,
-  T_CLOSURE=6,
-  T_CONTINUATION=7,
-  T_FOREIGN=8,
-  T_CHARACTER=9,
-  T_PORT=10,
-  T_VECTOR=11,
-  T_MACRO=12,
-  T_PROMISE=13,
-  T_ENVIRONMENT=14,
-  T_LAST_SYSTEM_TYPE=14
-};
-
 /* ADJ is enough slack to align cells in a TYPE_BITS-bit boundary */
 #define ADJ 32
 #define TYPE_BITS 5
-#define T_MASKTYPE      31    /* 0000000000011111 */
 #define T_SYNTAX      4096    /* 0001000000000000 */
 #define T_IMMUTABLE   8192    /* 0010000000000000 */
-#define T_ATOM       16384    /* 0100000000000000 */   /* only for gc */
 #define CLRATOM      49151    /* 1011111111111111 */   /* only for gc */
 #define MARK         32768    /* 1000000000000000 */
 #define UNMARK       32767    /* 0111111111111111 */
@@ -161,10 +143,6 @@ static INLINE int num_is_integer(pointer p) {
 
 static num num_zero;
 static num num_one;
-
-/* macros for cell operations */
-#define typeflag(p)      ((p)->_flag)
-#define type(p)          (typeflag(p)&T_MASKTYPE)
 
 INTERFACE INLINE int is_string(pointer p)     { return (type(p)==T_STRING); }
 #define strvalue(p)      ((p)->_object._string._svalue)
@@ -329,14 +307,12 @@ static int file_interactive(scheme *sc);
 static INLINE int is_one_of(char *s, int c);
 static int alloc_cellseg(scheme *sc, int n);
 static long binary_decode(const char *s);
-static INLINE pointer get_cell(scheme *sc, pointer a, pointer b);
 static pointer _get_cell(scheme *sc, pointer a, pointer b);
 static pointer reserve_cells(scheme *sc, int n);
 static pointer get_consecutive_cells(scheme *sc, int n);
 static pointer find_consecutive_cells(scheme *sc, int n);
 static void finalize_cell(scheme *sc, pointer a);
 static int count_consecutive_cells(pointer x, int needed);
-static pointer find_slot_in_env(scheme *sc, pointer env, pointer sym, int all);
 static pointer mk_number(scheme *sc, num n);
 static char *store_string(scheme *sc, int len, const char *str, char fill);
 static pointer mk_vector(scheme *sc, int len);
@@ -376,7 +352,6 @@ static pointer opexe_3(scheme *sc, enum scheme_opcodes op);
 static pointer opexe_4(scheme *sc, enum scheme_opcodes op);
 static pointer opexe_5(scheme *sc, enum scheme_opcodes op);
 static pointer opexe_6(scheme *sc, enum scheme_opcodes op);
-static void Eval_Cycle(scheme *sc, enum scheme_opcodes op);
 static void assign_syntax(scheme *sc, char *name);
 static int syntaxnum(pointer p);
 static void assign_proc(scheme *sc, enum scheme_opcodes, char *name);
@@ -618,7 +593,7 @@ static int alloc_cellseg(scheme *sc, int n) {
      return n;
 }
 
-static INLINE pointer get_cell_x(scheme *sc, pointer a, pointer b) {
+INLINE pointer get_cell_x(scheme *sc, pointer a, pointer b) {
   if (sc->free_cell != sc->NIL) {
     pointer x = sc->free_cell;
     sc->free_cell = cdr(x);
@@ -751,7 +726,7 @@ static void push_recent_alloc(scheme *sc, pointer recent, pointer extra)
 }
 
 
-static pointer get_cell(scheme *sc, pointer a, pointer b)
+pointer get_cell(scheme *sc, pointer a, pointer b)
 {
   pointer cell   = get_cell_x(sc, a, b);
   /* For right now, include "a" and "b" in "cell" so that gc doesn't
@@ -2035,6 +2010,8 @@ static void atom2str(scheme *sc, pointer l, int f, char **pp, int *plen) {
           snprintf(p,STRBUFFSIZE,"#<FOREIGN PROCEDURE %ld>", procnum(l));
      } else if (is_continuation(l)) {
           p = "#<CONTINUATION>";
+     } else if (ts_is_userdata(l)) {
+       p = "#<USERDATA>";
      } else {
           p = "#<ERROR>";
      }
@@ -2217,7 +2194,7 @@ static INLINE void new_slot_spec_in_env(scheme *sc, pointer env,
   }
 }
 
-static pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
+pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
 {
   pointer x,y;
   int location;
@@ -2261,7 +2238,7 @@ static INLINE void new_slot_spec_in_env(scheme *sc, pointer env,
   car(env) = immutable_cons(sc, immutable_cons(sc, variable, value), car(env));
 }
 
-static pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
+pointer find_slot_in_env(scheme *sc, pointer env, pointer hdl, int all)
 {
     pointer x,y;
     for (x = env; x != sc->NIL; x = cdr(x)) {
@@ -2295,7 +2272,7 @@ static INLINE void set_slot_in_env(scheme *sc, pointer slot, pointer value)
   cdr(slot) = value;
 }
 
-static INLINE pointer slot_value_in_env(pointer slot)
+INLINE pointer slot_value_in_env(pointer slot)
 {
   return cdr(slot);
 }
@@ -2303,7 +2280,7 @@ static INLINE pointer slot_value_in_env(pointer slot)
 /* ========== Evaluation Cycle ========== */
 
 
-static pointer _Error_1(scheme *sc, const char *s, pointer a) {
+pointer _Error_1(scheme *sc, const char *s, pointer a) {
      const char *str = s;
 #if USE_ERROR_HOOK
      pointer x;
@@ -2400,7 +2377,7 @@ static void s_save(scheme *sc, enum scheme_opcodes op, pointer args, pointer cod
   sc->dump = (pointer)(nframes+1);
 }
 
-static pointer _s_return(scheme *sc, pointer a)
+pointer _s_return(scheme *sc, pointer a)
 {
   int nframes = (int)sc->dump;
   struct dump_stack_frame *frame;
@@ -2470,7 +2447,7 @@ static void dump_stack_free(scheme *sc)
   sc->dump = sc->NIL;
 }
 
-static pointer _s_return(scheme *sc, pointer a) {
+pointer _s_return(scheme *sc, pointer a) {
     sc->value = (a);
     if(sc->dump==sc->NIL) return sc->NIL;
     sc->op = ivalue(car(sc->dump));
@@ -4009,13 +3986,6 @@ static pointer opexe_4(scheme *sc, enum scheme_opcodes op) {
 static pointer opexe_5(scheme *sc, enum scheme_opcodes op) {
      pointer x;
 
-     if(sc->nesting!=0) {
-          int n=sc->nesting;
-          sc->nesting=0;
-          sc->retcode=-1;
-          Error_1(sc,"unmatched parentheses:",mk_integer(sc,n));
-     }
-
      switch (op) {
      /* ========== reading part ========== */
      case OP_READ:
@@ -4093,6 +4063,8 @@ static pointer opexe_5(scheme *sc, enum scheme_opcodes op) {
                s_save(sc,OP_RDVEC,sc->NIL,sc->NIL);
                /* fall through */
           case TOK_LPAREN:
+	       sc->nesting++;
+
                sc->tok = token(sc);
                if (sc->tok == TOK_RPAREN) {
                     s_return(sc,sc->NIL);
@@ -4165,10 +4137,19 @@ static pointer opexe_5(scheme *sc, enum scheme_opcodes op) {
                sc->tok = token(sc);
           }
 */
-          if (sc->tok == TOK_EOF)
-               { s_return(sc,sc->EOF_OBJ); }
+          if (sc->tok == TOK_EOF) {
+		 if (sc->nesting != 0) {
+		   sc->nesting = 0;
+		   Error_0(sc, "unmatched parentheses");
+		 }
+
+		 s_return(sc,sc->EOF_OBJ);
+	       }
           else if (sc->tok == TOK_RPAREN) {
                int c = inchar(sc);
+
+	       sc->nesting--;
+
                if (c != '\n')
                  backchar(sc,c);
 #if SHOW_ERROR_LINE
@@ -4431,7 +4412,7 @@ static const char *procname(pointer x) {
 }
 
 /* kernel of this interpreter */
-static void Eval_Cycle(scheme *sc, enum scheme_opcodes op) {
+void Eval_Cycle(scheme *sc, enum scheme_opcodes op) {
   sc->op = op;
   for (;;) {
     op_code_info *pcd=dispatch_table+sc->op;
