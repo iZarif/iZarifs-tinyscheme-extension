@@ -55,11 +55,14 @@ struct cell {
       struct cell *_car;
       struct cell *_cdr;
     } _cons;
-    
+
+#ifdef TS_IZ_EXT
     struct {
       void *ptr;
       int type;
     } _userdata;
+#endif
+
   } _object;
 };
 

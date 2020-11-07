@@ -16,6 +16,10 @@ extern "C" {
 # define STANDALONE 0
 #endif
 
+#ifndef TS_IZ_EXT
+#define TS_IZ_EXT 1
+#endif
+
 #ifndef _MSC_VER
 # define USE_STRCASECMP 1
 # ifndef USE_STRLWR

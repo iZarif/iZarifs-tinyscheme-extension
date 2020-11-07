@@ -38,7 +38,9 @@
 # endif
 #endif
 
+#ifdef TS_IZ_EXT
 #include "ts_iz_ext.h"
+#endif
 
 /* Used for documentation purposes, to signal functions in 'interface' */
 #define INTERFACE
@@ -2010,8 +2012,12 @@ static void atom2str(scheme *sc, pointer l, int f, char **pp, int *plen) {
           snprintf(p,STRBUFFSIZE,"#<FOREIGN PROCEDURE %ld>", procnum(l));
      } else if (is_continuation(l)) {
           p = "#<CONTINUATION>";
+
+#ifdef TS_IZ_EXT
      } else if (ts_is_userdata(l)) {
        p = "#<USERDATA>";
+#endif
+
      } else {
           p = "#<ERROR>";
      }
@@ -4063,7 +4069,10 @@ static pointer opexe_5(scheme *sc, enum scheme_opcodes op) {
                s_save(sc,OP_RDVEC,sc->NIL,sc->NIL);
                /* fall through */
           case TOK_LPAREN:
+
+#ifdef TS_IZ_EXT
 	       sc->nesting++;
+#endif
 
                sc->tok = token(sc);
                if (sc->tok == TOK_RPAREN) {
@@ -4138,17 +4147,22 @@ static pointer opexe_5(scheme *sc, enum scheme_opcodes op) {
           }
 */
           if (sc->tok == TOK_EOF) {
+
+#ifdef TS_IZ_EXT
 		 if (sc->nesting != 0) {
 		   sc->nesting = 0;
 		   Error_0(sc, "unmatched parentheses");
 		 }
+#endif
 
 		 s_return(sc,sc->EOF_OBJ);
 	       }
           else if (sc->tok == TOK_RPAREN) {
                int c = inchar(sc);
 
+#ifdef TS_IZ_EXT
 	       sc->nesting--;
+#endif
 
                if (c != '\n')
                  backchar(sc,c);
