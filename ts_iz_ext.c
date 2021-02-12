@@ -105,12 +105,3 @@ pointer ts_mk_bool(scheme *sc, int b) {
   return sc->F;
 }
 
-static void call_callback(scheme *sc, const char *name) {
-  pointer fn = ts_sym_to_val(sc, sc->global_env, name);
-
-  if (fn == sc->NIL) {
-    return;
-  }
-
-  scheme_call(sc, fn, sc->NIL);
-}
